@@ -1,0 +1,5 @@
+import 0x0.LibraSystem;
+main(addr: address) {
+    LibraSystem.add_validator(move(addr));
+    return;
+}

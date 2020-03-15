@@ -1,0 +1,6 @@
+main() {
+    assert(0u64 + 0u64 == 0u64, 1000);
+    assert(0u64 + 1u64 == 1u64, 1001);
+    assert(1u64 + 1u64 == 2u64, 1002);
+    return;
+}
