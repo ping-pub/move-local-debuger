@@ -22,3 +22,4 @@ ir-to-bytecode = { git = "https://github.com/libra/libra", version = "0.1.0" }
 libra-types = { git = "https://github.com/libra/libra", version = "0.1.0" }
 move-ir-types = { git = "https://github.com/libra/libra", version = "0.1.0" }
 compiler = { git = "https://github.com/libra/libra", version = "0.1.0" }
+move-vm-types= { git = "https://github.com/libra/libra", version = "0.1.0" }

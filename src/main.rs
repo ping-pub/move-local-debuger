@@ -9,8 +9,10 @@ use move_vm_state::{
     execution_context::{SystemExecutionContext},
 };
 use bytecode_verifier::{
-    verifier::{verify_module_dependencies, VerifiedProgram},
-    VerifiedModule,
+    verifier::{
+        //verify_module_dependencies, 
+        VerifiedProgram},
+    //VerifiedModule,
 };
 use language_e2e_tests::data_store::FakeDataStore;
 use vm::{
@@ -24,11 +26,12 @@ use vm::{
     transaction_metadata::TransactionMetadata,
 };
 use libra_types::{
-    //account_address::AccountAddress,
+    account_address::AccountAddress,
     account_config,
     transaction::{
         //Module, 
-        Script
+        Script,
+        TransactionArgument,
     },
 };
 use compiler::Compiler;
@@ -38,15 +41,15 @@ use std::{
     io::Write,
 };
 use stdlib::{stdlib_modules, StdLibOptions};
+use move_vm_types::values::Value;
 
 fn main() {
 
     let address = account_config::association_address(); //AccountAddress::default();
-
+    let para1 = Value::address(address);
+    let args = vec![para1];   
     let source_path = Path::new("/Users/liangping/workspace/hello/src/scripts/add_validator.mvir");
-    //let mvir_extension = "mvir";
     let mv_extension = "mv";
-    //let source_map_extension = "mvsm";
 
     println!("{:?}", address); 
     
@@ -78,17 +81,22 @@ fn main() {
     // Execute script. 
     // create a Move VM and populate it with generated modules
     let move_vm = MoveVM::new();
-
-    // create an InterpreterContext for runtime operations
     let data_cache = FakeDataStore::default();
     let mut ctx = SystemExecutionContext::new(&data_cache, GasUnits::new(0));
-
-    // make an Interpreter for execution
     let gas_schedule = CostTable::zero();
+
+    // load std modules
+    let mut txn_stdlib = TransactionMetadata::default();
+    txn_stdlib.sender = account_config::CORE_CODE_ADDRESS;
+    let std = stdlib_modules(StdLibOptions::Staged).iter();
+    for x in std {
+        let mut bytes:Vec<u8> = vec![];
+        x.serialize(&mut bytes).expect("Std Modules serialize failed.");
+        move_vm.publish_module(bytes, &mut ctx, &txn_stdlib).expect("Publish failed"); 
+    };
+     
     let mut txn_data = TransactionMetadata::default();
     txn_data.sender = address;
-
-    let args = Vec::new();
     let result: VMResult<()> = move_vm.execute_script(script, &gas_schedule, &mut ctx, &txn_data, args);
     
     println!("output from move vm: {:?}",  result);
