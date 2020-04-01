@@ -8,11 +8,10 @@ use move_vm_state::{
     //data_cache::{BlockDataCache, RemoteCache},
     execution_context::{SystemExecutionContext},
 };
+//use bytecode_source_map::source_map::SourceMap;
 use bytecode_verifier::{
     verifier::{
-        //verify_module_dependencies, 
-        VerifiedProgram},
-    //VerifiedModule,
+        VerifiedScript}
 };
 use language_e2e_tests::data_store::FakeDataStore;
 use vm::{
@@ -46,10 +45,11 @@ use move_vm_types::values::Value;
 fn main() {
 
     let address = account_config::association_address(); //AccountAddress::default();
-    let para1 = Value::address(address);
-    let args = vec![para1];   
-    let source_path = Path::new("/Users/liangping/workspace/hello/src/scripts/add_validator.mvir");
+    //let para1 = Value::address(address);
+    let args = vec![];   
+    let source_path = Path::new("/Users/liangping/workspace/hello/src/scripts/test.mvir");
     let mv_extension = "mv";
+    let sm_extension = "mvsm";
 
     println!("{:?}", address); 
     
@@ -63,20 +63,21 @@ fn main() {
 
     let source = fs::read_to_string(source_path.as_os_str()).expect("Unable to read file");
 
-    let (compiled_program, _, dependencies) = compiler.into_compiled_program_and_source_maps_deps(source_path.as_os_str().to_str().unwrap(), &source)
+
+    let (compiled_program, source_map) = compiler.into_compiled_script_and_source_map(source_path.as_os_str().to_str().unwrap(), &source)
             .expect("Failed to compile program");
-    let verified_program = VerifiedProgram::new(compiled_program, &dependencies)
+    let verified_program = VerifiedScript::new(compiled_program)
             .expect("Failed to verify program");
     let compiled_program = verified_program.into_inner();
 
     let mut script: Vec<u8> = vec![];
-    compiled_program
-        .script
+    compiled_program.as_inner()
         .serialize(&mut script)
         .expect("Unable to serialize script");
-    let payload = Script::new(script.clone(), vec![]);
-    let payload_bytes = serde_json::to_vec(&payload).expect("Unable to serialize program");
-    write_output(&source_path.with_extension(mv_extension), &payload_bytes);        
+    
+
+    let source_map_bytes = serde_json::to_vec(&source_map).expect("Unable to serialize program");
+    write_output(&source_path.with_extension(sm_extension), &source_map_bytes);        
     
     // Execute script. 
     // create a Move VM and populate it with generated modules
@@ -107,3 +108,34 @@ fn write_output(path: &PathBuf, buf: &[u8]) {
     let mut f = fs::File::create(path).expect("Error occurs on create output file");
     f.write_all(&buf).expect("Error occurs on writing output file");
 }
+
+// fn fetch_gas_schedule(&mut self, data_cache: &dyn RemoteCache) -> VMResult<CostTable> {
+//     let address = account_config::association_address();
+//     let mut ctx = SystemExecutionContext::new(data_cache, GasUnits::new(0));
+//     let gas_struct_ty = self
+//         .move_vm
+//         .resolve_struct_def_by_name(&GAS_SCHEDULE_MODULE, &GAS_SCHEDULE_NAME, &mut ctx, &[])
+//         .map_err(|_| {
+//             VMStatus::new(StatusCode::GAS_SCHEDULE_ERROR)
+//                 .with_sub_status(sub_status::GSE_UNABLE_TO_LOAD_MODULE)
+//         })?;
+
+//     let access_path = create_access_path(address, gas_struct_ty.into_struct_tag()?);
+
+//     let data_blob = data_cache
+//         .get(&access_path)
+//         .map_err(|_| {
+//             VMStatus::new(StatusCode::GAS_SCHEDULE_ERROR)
+//                 .with_sub_status(sub_status::GSE_UNABLE_TO_LOAD_RESOURCE)
+//         })?
+//         .ok_or_else(|| {
+//             VMStatus::new(StatusCode::GAS_SCHEDULE_ERROR)
+//                 .with_sub_status(sub_status::GSE_UNABLE_TO_LOAD_RESOURCE)
+//         })?;
+//     let table: CostTable = lcs::from_bytes(&data_blob).map_err(|_| {
+//         VMStatus::new(StatusCode::GAS_SCHEDULE_ERROR)
+//             .with_sub_status(sub_status::GSE_UNABLE_TO_DESERIALIZE)
+//     })?;
+
+//     Ok(table)
+// }
