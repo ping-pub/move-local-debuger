@@ -6,7 +6,7 @@ use move_vm_runtime::{
 };
 use move_vm_state::{
     //data_cache::{BlockDataCache, RemoteCache},
-    execution_context::{SystemExecutionContext},
+    execution_context::{ExecutionContext, SystemExecutionContext},
 };
 //use bytecode_source_map::source_map::SourceMap;
 use bytecode_verifier::{
@@ -32,6 +32,7 @@ use libra_types::{
         Script,
         TransactionArgument,
     },
+    write_set::{WriteSet},
 };
 use compiler::Compiler;
 use std::{
@@ -98,7 +99,7 @@ fn main() {
      
     let mut txn_data = TransactionMetadata::default();
     txn_data.sender = address;
-    let result: VMResult<()> = move_vm.execute_script(script, &gas_schedule, &mut ctx, &txn_data, args);
+    let result: VMResult<()> = move_vm.execute_script(script, &gas_schedule, &mut ctx, &txn_data, vec![],args);
     
     println!("output from move vm: {:?}",  result);
 
