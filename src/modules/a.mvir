@@ -1,0 +1,7 @@
+module A {
+    resource Coin { u: u64 }
+
+    public new(): Self.Coin {
+        return Coin { u: 1 };
+    }
+}

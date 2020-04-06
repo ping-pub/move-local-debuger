@@ -1,5 +1,6 @@
 
 #![allow(dead_code)]
+#![allow(unused_imports)]
 
 use move_vm_runtime::{
     MoveVM,
@@ -10,8 +11,7 @@ use move_vm_state::{
 };
 //use bytecode_source_map::source_map::SourceMap;
 use bytecode_verifier::{
-    verifier::{
-        VerifiedScript}
+    verifier::{VerifiedScript,VerifiedModule}
 };
 use language_e2e_tests::data_store::FakeDataStore;
 use vm::{
@@ -42,6 +42,9 @@ use std::{
 };
 use stdlib::{stdlib_modules, StdLibOptions};
 use move_vm_types::values::Value;
+use include_dir::{include_dir, Dir};
+
+const PRELOAD_DIR: Dir = include_dir!("./src/modules");
 
 fn main() {
 
@@ -49,16 +52,34 @@ fn main() {
     //let para1 = Value::address(address);
     let args = vec![];   
     let source_path = Path::new("/Users/liangping/workspace/hello/src/scripts/test.mvir");
-    let mv_extension = "mv";
+    let _mv_extension = "mv";
     let sm_extension = "mvsm";
 
     println!("{:?}", address); 
-    
+
+    // prepare for startup.
+    let mut data_cache: FakeDataStore = FakeDataStore::default();
+
+    let mut stdlib = stdlib_modules(StdLibOptions::Staged).to_vec();
+    for x in &stdlib {
+        let cm = &x.as_inner();
+        data_cache.add_module(&cm.self_id(), cm);
+    };
+    let pattern = "**/*.mvir";
+    for entry in PRELOAD_DIR.find(pattern).unwrap() {
+        println!("preload: {}", entry.path().display());
+        let m: VerifiedModule = pre_complie(entry.path(), address);
+
+        let cm = &m.as_inner();
+        data_cache.add_module(&cm.self_id(), cm);
+        stdlib.push(m);
+    };
+
     // Compile script: 
     let compiler = Compiler {
         address,
         skip_stdlib_deps: false,
-        extra_deps: stdlib_modules(StdLibOptions::Staged).to_vec(),
+        extra_deps: stdlib.clone(),
         ..Compiler::default()
     };
 
@@ -74,31 +95,22 @@ fn main() {
     let mut script: Vec<u8> = vec![];
     compiled_program.as_inner()
         .serialize(&mut script)
-        .expect("Unable to serialize script");
-    
+        .expect("Unable to serialize script"); 
 
-    let source_map_bytes = serde_json::to_vec(&source_map).expect("Unable to serialize program");
-    write_output(&source_path.with_extension(sm_extension), &source_map_bytes);        
-    
+    if cfg!(source_map) {
+        let source_map_bytes = serde_json::to_vec(&source_map).expect("Unable to serialize program");
+        write_output(&source_path.with_extension(sm_extension), &source_map_bytes);   
+    }
     // Execute script. 
     // create a Move VM and populate it with generated modules
     let move_vm = MoveVM::new();
-    let data_cache = FakeDataStore::default();
     let mut ctx = SystemExecutionContext::new(&data_cache, GasUnits::new(0));
     let gas_schedule = CostTable::zero();
 
-    // load std modules
-    let mut txn_stdlib = TransactionMetadata::default();
-    txn_stdlib.sender = account_config::CORE_CODE_ADDRESS;
-    let std = stdlib_modules(StdLibOptions::Staged).iter();
-    for x in std {
-        let mut bytes:Vec<u8> = vec![];
-        x.serialize(&mut bytes).expect("Std Modules serialize failed.");
-        move_vm.publish_module(bytes, &mut ctx, &txn_stdlib).expect("Publish failed"); 
-    };
-     
+
     let mut txn_data = TransactionMetadata::default();
     txn_data.sender = address;
+
     let result: VMResult<()> = move_vm.execute_script(script, &gas_schedule, &mut ctx, &txn_data, vec![],args);
     
     println!("output from move vm: {:?}",  result);
@@ -108,6 +120,24 @@ fn main() {
 fn write_output(path: &PathBuf, buf: &[u8]) {
     let mut f = fs::File::create(path).expect("Error occurs on create output file");
     f.write_all(&buf).expect("Error occurs on writing output file");
+}
+
+fn pre_complie( path: &Path, address: AccountAddress) -> VerifiedModule {
+    // Compile script: 
+    let compiler = Compiler {
+        //address: AccountAddress::from_hex_literal("0xc4ece0edf07cfbf7fae8714f668ecdf1").unwrap(),
+        address: address,
+        skip_stdlib_deps: false,
+        extra_deps: stdlib_modules(StdLibOptions::Staged).to_vec(),
+        ..Compiler::default()
+    };
+
+    let source = PRELOAD_DIR.get_file(path.to_str().unwrap()).unwrap().contents_utf8().unwrap();
+
+    let compiled_module = compiler.into_compiled_module(path.as_os_str().to_str().unwrap(), &source)
+            .expect("Failed to compile module");
+
+    VerifiedModule::bypass_verifier_DANGEROUS_FOR_TESTING_ONLY(compiled_module)
 }
 
 // fn fetch_gas_schedule(&mut self, data_cache: &dyn RemoteCache) -> VMResult<CostTable> {

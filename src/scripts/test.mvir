@@ -1,6 +1,14 @@
+import 0x0.LibraAccount;
+import 0x0.Libra;
+import 0x0.LBR;
+import 0x0000000000000000000000000a550c18.A;
+
 main() {
-    assert(0u64 + 0u64 == 0u64, 1000);
-    assert(0u64 + 1u64 == 1u64, 1001);
-    assert(1u64 + 1u64 == 2u64, 1002);
+    let balance: u64;
+    let sender: address;
+
+    sender = get_txn_sender();
+    balance = LibraAccount.balance<LBR.T>(move(sender));
+    assert(move(balance) < 89800, 42);
     return;
 }
