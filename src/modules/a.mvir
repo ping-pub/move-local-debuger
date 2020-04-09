@@ -1,7 +1,19 @@
 module A {
     resource Coin { u: u64 }
 
-    public new(): Self.Coin {
-        return Coin { u: 1 };
+    resource Some<T> {v: T}
+
+    // public new(): Self.Coin {
+    //     return Coin { u: 1 };
+    // }
+
+    public publish() {
+        let value: Self.Coin;
+        let some: Self.Some<Self.Coin>;
+        value = Coin {u: 2110};
+        // some = Some<Self.Coin> {v: move(value)};
+        // move_to_sender<Some<Self.Coin>>(move(some));
+        move_to_sender<Coin>(move(value));
+        return;
     }
 }

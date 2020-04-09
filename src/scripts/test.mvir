@@ -1,14 +1,27 @@
-import 0x0.LibraAccount;
-import 0x0.Libra;
-import 0x0.LBR;
+// import 0x0.LibraAccount;
+// import 0x0.Libra;
+// import 0x0.LBR;
+import 0x0.Console;
 import 0x0000000000000000000000000a550c18.A;
 
-main() {
-    let balance: u64;
-    let sender: address;
+//import 0x0.Vector;
 
-    sender = get_txn_sender();
-    balance = LibraAccount.balance<LBR.T>(move(sender));
-    assert(move(balance) < 89800, 42);
+main() {
+    let x: u64;
+    let addr: address;
+    let b: bool;
+    let constant: vector<u8>;
+    let r: u64;
+
+    constant = h"aaaaaaaa";
+    x = 100;
+    b = true;
+    addr = 0x0;
+
+    r = Console.log<bool>(&b);
+    r = Console.log<address>(&addr);
+    r = Console.log<u64>(&x);
+    r = Console.log<vector<u8>>(&constant);
+
     return;
 }

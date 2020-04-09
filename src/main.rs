@@ -13,7 +13,10 @@ use move_vm_state::{
 use bytecode_verifier::{
     verifier::{VerifiedScript,VerifiedModule}
 };
-use language_e2e_tests::data_store::FakeDataStore;
+use language_e2e_tests::{
+    account::{Account, AccountData},
+    data_store::FakeDataStore,
+};
 use vm::{
     errors::VMResult,
     //access::ModuleAccess,
@@ -32,7 +35,7 @@ use libra_types::{
         Script,
         TransactionArgument,
     },
-    write_set::{WriteSet},
+    write_set::{WriteSet, WriteOp},
 };
 use compiler::Compiler;
 use std::{
@@ -60,7 +63,7 @@ fn main() {
     // prepare for startup.
     let mut data_cache: FakeDataStore = FakeDataStore::default();
 
-    let mut stdlib = stdlib_modules(StdLibOptions::Staged).to_vec();
+    let mut stdlib = stdlib_modules(StdLibOptions::Fresh).to_vec();
     for x in &stdlib {
         let cm = &x.as_inner();
         data_cache.add_module(&cm.self_id(), cm);
@@ -75,6 +78,10 @@ fn main() {
         stdlib.push(m);
     };
 
+    let acc = Account::new_association(); // Account::new_genesis_account(address);
+    let account_data = AccountData::with_account(acc, 10000000000, 1);
+    data_cache.add_account_data( &account_data );
+
     // Compile script: 
     let compiler = Compiler {
         address,
@@ -84,7 +91,6 @@ fn main() {
     };
 
     let source = fs::read_to_string(source_path.as_os_str()).expect("Unable to read file");
-
 
     let (compiled_program, source_map) = compiler.into_compiled_script_and_source_map(source_path.as_os_str().to_str().unwrap(), &source)
             .expect("Failed to compile program");
@@ -114,6 +120,17 @@ fn main() {
     let result: VMResult<()> = move_vm.execute_script(script, &gas_schedule, &mut ctx, &txn_data, vec![],args);
     
     println!("output from move vm: {:?}",  result);
+
+    let ws = ctx.make_write_set().unwrap();
+    println!("{},=>", &ws.len());
+
+    for (a, wo) in ws {
+        println!("path:{}, {:?}", a, wo);
+        match wo {
+            WriteOp::Deletion=> println!("delete"),
+            WriteOp::Value(v)=> println!("{:?}", v),
+        }
+    }
 
 }
 
